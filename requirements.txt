@@ -1,0 +1,6 @@
+streamlit>=1.30
+yfinance>=0.2.30
+pyxirr>=0.9
+plotly>=5.18
+pandas>=2.0
+libsql-experimental>=0.0.34

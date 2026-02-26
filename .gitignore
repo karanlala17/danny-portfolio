@@ -1,0 +1,21 @@
+# Secrets (contains Turso credentials and admin PIN)
+.streamlit/secrets.toml
+
+# Local SQLite database
+*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Prompt file (not needed in deployment)
+Portfolio_prompt.txt

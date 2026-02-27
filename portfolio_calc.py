@@ -488,3 +488,41 @@ def _get_price_on_date(series, d):
 def _get_rate_on_date(series, d):
     """Get FX rate on date, forward-filling."""
     return _get_price_on_date(series, d)
+
+
+# ---------------------------------------------------------------------------
+# Portfolio risk metrics
+# ---------------------------------------------------------------------------
+
+def compute_max_drawdown(nav_df: pd.DataFrame = None) -> float | None:
+    """Compute maximum drawdown from peak as a percentage."""
+    if nav_df is None:
+        nav_df = compute_nav_series()
+    if nav_df.empty or len(nav_df) < 2:
+        return None
+
+    nav = nav_df["nav"]
+    running_max = nav.cummax()
+    drawdown = (nav - running_max) / running_max * 100
+    return float(drawdown.min())
+
+
+def compute_sharpe_ratio(nav_df: pd.DataFrame = None, risk_free_annual: float = 0.04) -> float | None:
+    """Compute annualized Sharpe ratio from daily NAV returns.
+
+    risk_free_annual: annualized risk-free rate (default 4% ~ UK gilts).
+    """
+    if nav_df is None:
+        nav_df = compute_nav_series()
+    if nav_df.empty or len(nav_df) < 30:
+        return None
+
+    nav = nav_df["nav"]
+    daily_returns = nav.pct_change().dropna()
+    if daily_returns.std() == 0:
+        return None
+
+    daily_rf = (1 + risk_free_annual) ** (1 / 252) - 1
+    excess_returns = daily_returns - daily_rf
+    sharpe = (excess_returns.mean() / excess_returns.std()) * (252 ** 0.5)
+    return float(sharpe)

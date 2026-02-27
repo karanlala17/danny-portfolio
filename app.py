@@ -43,7 +43,10 @@ Dates are displayed in dd-mm-yyyy format.
 # Quick stats
 st.subheader("Quick Overview")
 
-from portfolio_calc import compute_holdings, compute_cash_on_hand, compute_portfolio_xirr, compute_nav_series
+from portfolio_calc import (
+    compute_holdings, compute_cash_on_hand, compute_portfolio_xirr,
+    compute_nav_series, compute_max_drawdown, compute_sharpe_ratio,
+)
 
 def compact_gbp(value: float) -> str:
     sign = "-" if value < 0 else ""
@@ -82,8 +85,8 @@ if holdings:
 
     # --- Row 1: Key metrics ---
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Active Holdings", num_active)
-    col2.metric("Market Value (GBP)", compact_gbp(total_mv))
+    col1.metric("Market Value (GBP)", compact_gbp(total_mv))
+    col2.metric("Total Cost (GBP)", compact_gbp(df["total_cost_gbp"].sum()))
     col3.metric(
         "Daily Change",
         compact_gbp(daily_change_gbp),
@@ -93,6 +96,7 @@ if holdings:
         "Portfolio XIRR",
         f"{xirr_pct:+.2f}%" if xirr_pct is not None else "N/A",
     )
+
 
     # --- Row 2: P&L and cash ---
     total_cost = df["total_cost_gbp"].sum()
@@ -105,5 +109,25 @@ if holdings:
     col6.metric("Realized P&L", compact_gbp(total_re))
     col7.metric("Total P&L", compact_gbp(total_pnl), delta=f"{total_pnl_pct:+.2f}%")
     col8.metric("Cash in Hand (GBP)", compact_gbp(cash))
+
+    # --- Row 3: Risk metrics ---
+    max_dd = compute_max_drawdown(nav_df)
+    sharpe = compute_sharpe_ratio(nav_df)
+
+    col9, col10, col11, col12 = st.columns(4)
+    col9.metric(
+        "Max Drawdown",
+        f"{max_dd:.2f}%" if max_dd is not None else "N/A",
+    )
+    col10.metric(
+        "Sharpe Ratio",
+        f"{sharpe:.2f}" if sharpe is not None else "N/A",
+    )
+    if not nav_df.empty:
+        peak_nav = nav_df["nav"].max()
+        col11.metric("Peak NAV", compact_gbp(peak_nav))
+    else:
+        col11.metric("Peak NAV", "N/A")
+    col12.metric("Active Holdings", num_active)
 else:
     st.info("No transactions yet. Go to **Transactions** to add your first trade.")

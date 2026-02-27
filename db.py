@@ -11,6 +11,9 @@ import streamlit as st
 # Connection
 # ---------------------------------------------------------------------------
 
+_USE_TURSO = None  # cached flag
+
+
 def _get_turso_url():
     """Get Turso DB URL from Streamlit secrets or env."""
     try:
@@ -27,10 +30,50 @@ def _get_turso_token():
         return os.environ.get("TURSO_AUTH_TOKEN", "")
 
 
-def _dict_row_factory(cursor, row):
-    """Row factory that returns dicts (works with both sqlite3 and libsql)."""
-    cols = [d[0] for d in cursor.description]
-    return dict(zip(cols, row))
+class _DictCursorWrapper:
+    """Wraps a cursor to return dicts instead of tuples."""
+
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    def fetchone(self):
+        row = self._cursor.fetchone()
+        if row is None:
+            return None
+        cols = [d[0] for d in self._cursor.description]
+        return dict(zip(cols, row))
+
+    def fetchall(self):
+        rows = self._cursor.fetchall()
+        if not rows:
+            return []
+        cols = [d[0] for d in self._cursor.description]
+        return [dict(zip(cols, r)) for r in rows]
+
+
+class _ConnWrapper:
+    """Wraps a DB connection so execute() returns dict rows."""
+
+    def __init__(self, raw_conn, is_turso=False):
+        self._conn = raw_conn
+        self._is_turso = is_turso
+
+    def execute(self, sql, params=None):
+        if params:
+            cur = self._conn.execute(sql, params)
+        else:
+            cur = self._conn.execute(sql)
+        return _DictCursorWrapper(cur)
+
+    def commit(self):
+        self._conn.commit()
+
+    def sync(self):
+        if self._is_turso:
+            self._conn.sync()
+
+    def close(self):
+        self._conn.close()
 
 
 @contextmanager
@@ -41,18 +84,17 @@ def get_connection():
 
     if url:
         import libsql_experimental as libsql
-        conn = libsql.connect("local.db", sync_url=url, auth_token=token)
-        conn.sync()
+        raw = libsql.connect("local.db", sync_url=url, auth_token=token)
+        raw.sync()
+        conn = _ConnWrapper(raw, is_turso=True)
     else:
-        # Fallback to local SQLite for development
-        conn = sqlite3.connect("portfolio.db")
+        raw = sqlite3.connect("portfolio.db")
+        conn = _ConnWrapper(raw, is_turso=False)
 
-    conn.row_factory = _dict_row_factory
     try:
         yield conn
         conn.commit()
-        if url:
-            conn.sync()
+        conn.sync()
     finally:
         conn.close()
 

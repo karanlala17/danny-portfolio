@@ -1,4 +1,4 @@
-"""Stock Watchlist — tracked securities with daily moves, PE, EPS, 2-year history."""
+"""Stock Watchlist — tracked securities and commodities with daily moves, history."""
 
 import streamlit as st
 st.set_page_config(page_title="Stock Watchlist", page_icon="📋", layout="wide")
@@ -66,9 +66,30 @@ watchlist_sorted = sorted(
     key=lambda w: order_map.get(w["ticker"], 999),
 )
 
-with st.spinner("Loading..."):
+COMMODITY_TICKERS = {"GC=F", "SI=F", "COPX"}
+
+stock_watchlist = [w for w in watchlist_sorted if w["ticker"] not in COMMODITY_TICKERS]
+commodity_watchlist = [w for w in watchlist_sorted if w["ticker"] in COMMODITY_TICKERS]
+
+
+def fmt_or_na(val, fmt="{:.2f}"):
+    if val is None:
+        return "N/A"
+    return fmt.format(val)
+
+
+def _color_pct(v):
+    if isinstance(v, (int, float)):
+        if v > 0:
+            return "color: green"
+        if v < 0:
+            return "color: red"
+    return ""
+
+
+def _fetch_rows(items):
     rows = []
-    for w in watchlist_sorted:
+    for w in items:
         data = get_current_price(w["ticker"])
         if data:
             rows.append({
@@ -85,39 +106,55 @@ with st.spinner("Loading..."):
                 "PE": data["pe"],
                 "EPS": data["eps"],
             })
+    return rows
 
-if rows:
-    df = pd.DataFrame(rows)
 
-    def fmt_or_na(val, fmt="{:.2f}"):
-        if val is None:
-            return "N/A"
-        return fmt.format(val)
+_table_fmt = {
+    "Price": "{:,.4f}",
+    "Daily %": "{:+.2f}%",
+    "52W High": lambda v: fmt_or_na(v, "{:,.2f}"),
+    "52W Low": lambda v: fmt_or_na(v, "{:,.2f}"),
+    "52W %": lambda v: fmt_or_na(v, "{:+.2f}%"),
+    "30D %": lambda v: fmt_or_na(v, "{:+.2f}%"),
+    "7D %": lambda v: fmt_or_na(v, "{:+.2f}%"),
+    "PE": lambda v: fmt_or_na(v, "{:.1f}"),
+    "EPS": lambda v: fmt_or_na(v, "{:.2f}"),
+}
+_pct_cols = ["Daily %", "52W %", "30D %", "7D %"]
 
+# --- Stocks ---
+st.subheader("Stocks")
+
+with st.spinner("Loading stocks..."):
+    stock_rows = _fetch_rows(stock_watchlist)
+
+if stock_rows:
+    stock_df = pd.DataFrame(stock_rows)
     st.dataframe(
-        df.style.format({
-            "Price": "{:,.4f}",
-            "Daily %": "{:+.2f}%",
-            "52W High": lambda v: fmt_or_na(v, "{:,.2f}"),
-            "52W Low": lambda v: fmt_or_na(v, "{:,.2f}"),
-            "52W %": lambda v: fmt_or_na(v, "{:+.2f}%"),
-            "30D %": lambda v: fmt_or_na(v, "{:+.2f}%"),
-            "7D %": lambda v: fmt_or_na(v, "{:+.2f}%"),
-            "PE": lambda v: fmt_or_na(v, "{:.1f}"),
-            "EPS": lambda v: fmt_or_na(v, "{:.2f}"),
-        }).map(
-            lambda v: (
-                "color: green" if isinstance(v, (int, float)) and v > 0
-                else "color: red" if isinstance(v, (int, float)) and v < 0
-                else ""
-            ),
-            subset=["Daily %", "52W %", "30D %", "7D %"],
-        ),
+        stock_df.style.format(_table_fmt).map(_color_pct, subset=_pct_cols),
         use_container_width=True,
         hide_index=True,
     )
 else:
     st.warning("Could not fetch stock data. Please try again later.")
+
+# --- Commodities ---
+if commodity_watchlist:
+    st.subheader("Commodities")
+
+    with st.spinner("Loading commodities..."):
+        commodity_rows = _fetch_rows(commodity_watchlist)
+
+    if commodity_rows:
+        comm_df = pd.DataFrame(commodity_rows)
+        # Drop PE/EPS for commodities (not applicable)
+        comm_display_cols = [c for c in comm_df.columns if c not in ("PE", "EPS")]
+        comm_fmt = {k: v for k, v in _table_fmt.items() if k not in ("PE", "EPS")}
+        st.dataframe(
+            comm_df[comm_display_cols].style.format(comm_fmt).map(_color_pct, subset=_pct_cols),
+            use_container_width=True,
+            hide_index=True,
+        )
 
 # ---------------------------------------------------------------------------
 # 2-Year Daily Close History

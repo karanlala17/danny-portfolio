@@ -70,7 +70,7 @@ WATCHLIST_ORDER = [
     "GOOGL", "AMD", "VOO", "V", "MCO", "SPGI", "BYDDY", "AMZN", "CNA.L",
     "META", "BRK-B", "NFLX", "MA", "TATAPOWER.NS", "AXP", "ANTO.L", "UNH",
     "HSBA.L", "INTC", "AVGO", "ADBE", "IREN", "IONQ", "MU", "COPX",
-    "GC=F", "SI=F", "ORCL", "TATAPOWER.NS",
+    "XAUUSD=X", "XAGUSD=X", "ORCL", "TATAPOWER.NS",
 ]
 
 # Brokers

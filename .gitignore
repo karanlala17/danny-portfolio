@@ -19,3 +19,6 @@ Thumbs.db
 
 # Prompt file (not needed in deployment)
 Portfolio_prompt.txt
+
+# Migration script (contains credentials)
+migrate_to_turso.py

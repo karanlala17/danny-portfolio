@@ -71,25 +71,30 @@ total_realized = df["realized_pnl_gbp"].sum()
 total_pnl = total_unrealized + total_realized
 portfolio_return_pct = (total_pnl / total_cost * 100) if total_cost else None
 
-col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+portfolio_xirr_pct = (portfolio_xirr * 100) if portfolio_xirr is not None else None
+ur_pct = (total_unrealized / total_cost * 100) if total_cost else 0.0
+total_pnl_pct = (total_pnl / total_cost * 100) if total_cost else 0.0
+
+# Row 1
+col1, col2, col3, col4 = st.columns(4)
 col1.metric("Market Value (GBP)", compact_gbp(total_market_value))
 col2.metric("Total Cost (GBP)", compact_gbp(total_cost))
-col3.metric("Unrealized P&L", compact_gbp(total_unrealized))
+col3.metric("Unrealized P&L", compact_gbp(total_unrealized), delta=f"{ur_pct:+.2f}%")
 col4.metric("Realized P&L", compact_gbp(total_realized))
-col5.metric("Total P&L", compact_gbp(total_pnl))
+
+# Row 2
+col5, col6, col7, col8 = st.columns(4)
+col5.metric("Total P&L", compact_gbp(total_pnl), delta=f"{total_pnl_pct:+.2f}%")
 col6.metric(
     "Portfolio Return %",
     f"{portfolio_return_pct:+.2f}%" if portfolio_return_pct is not None else "N/A",
-    delta=(f"{portfolio_return_pct:+.2f}%" if portfolio_return_pct is not None else None),
 )
-portfolio_xirr_pct = (portfolio_xirr * 100) if portfolio_xirr is not None else None
 col7.metric(
     "Portfolio XIRR",
     f"{portfolio_xirr_pct:+.2f}%" if portfolio_xirr_pct is not None else "N/A",
-    delta=(f"{portfolio_xirr_pct:+.2f}%" if portfolio_xirr_pct is not None else None),
 )
+col8.metric("GBP/USD Rate", f"{gbp_usd:.4f}")
 
-st.caption(f"GBP/USD rate: {gbp_usd:.6f}")
 st.caption("USD BUY/SELL transactions use stored transaction-date FX rates; current USD holdings are converted at current GBP/USD.")
 st.divider()
 

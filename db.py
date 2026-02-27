@@ -27,6 +27,12 @@ def _get_turso_token():
         return os.environ.get("TURSO_AUTH_TOKEN", "")
 
 
+def _dict_row_factory(cursor, row):
+    """Row factory that returns dicts (works with both sqlite3 and libsql)."""
+    cols = [d[0] for d in cursor.description]
+    return dict(zip(cols, row))
+
+
 @contextmanager
 def get_connection():
     """Yield a DB connection. Uses Turso if configured, else local SQLite."""
@@ -41,7 +47,7 @@ def get_connection():
         # Fallback to local SQLite for development
         conn = sqlite3.connect("portfolio.db")
 
-    conn.row_factory = sqlite3.Row
+    conn.row_factory = _dict_row_factory
     try:
         yield conn
         conn.commit()

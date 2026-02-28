@@ -87,18 +87,18 @@ if holdings:
 
     # --- Row 1: Key metrics ---
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Market Value (GBP)", compact_gbp(total_mv))
-    col2.metric("Total Cost (GBP)", compact_gbp(df["total_cost_gbp"].sum()))
-    col3.metric(
-        "Daily Change",
-        compact_gbp(daily_change_gbp),
-        delta=f"{daily_change_pct:+.2f}%",
-    )
-    col4.metric(
-        "Portfolio XIRR",
-        f"{xirr_pct:+.2f}%" if xirr_pct is not None else "N/A",
-    )
-
+    with col1:
+        st.metric("Market Value (GBP)", compact_gbp(total_mv))
+        st.caption("Current value of all holdings")
+    with col2:
+        st.metric("Total Cost (GBP)", compact_gbp(df["total_cost_gbp"].sum()))
+        st.caption("Total amount invested")
+    with col3:
+        st.metric("Daily Change", compact_gbp(daily_change_gbp), delta=f"{daily_change_pct:+.2f}%")
+        st.caption("Change since previous close")
+    with col4:
+        st.metric("Portfolio XIRR", f"{xirr_pct:+.2f}%" if xirr_pct is not None else "N/A")
+        st.caption("Annualized return (time-weighted)")
 
     # --- Row 2: P&L and cash ---
     total_cost = df["total_cost_gbp"].sum()
@@ -107,29 +107,38 @@ if holdings:
     ur_pct = (total_ur / total_cost * 100) if total_cost else 0.0
 
     col5, col6, col7, col8 = st.columns(4)
-    col5.metric("Unrealized P&L", compact_gbp(total_ur), delta=f"{ur_pct:+.2f}%")
-    col6.metric("Realized P&L", compact_gbp(total_re))
-    col7.metric("Total P&L", compact_gbp(total_pnl), delta=f"{total_pnl_pct:+.2f}%")
-    col8.metric("Cash in Hand (GBP)", compact_gbp(cash))
+    with col5:
+        st.metric("Unrealized P&L", compact_gbp(total_ur), delta=f"{ur_pct:+.2f}%")
+        st.caption("Gain/loss on open positions")
+    with col6:
+        st.metric("Realized P&L", compact_gbp(total_re))
+        st.caption("Gain/loss on closed trades")
+    with col7:
+        st.metric("Total P&L", compact_gbp(total_pnl), delta=f"{total_pnl_pct:+.2f}%")
+        st.caption("Unrealized + realized combined")
+    with col8:
+        st.metric("Cash in Hand (GBP)", compact_gbp(cash))
+        st.caption("Proceeds from sales held as cash")
 
     # --- Row 3: Risk metrics ---
     max_dd = compute_max_drawdown(nav_df)
     sharpe = compute_sharpe_ratio(nav_df)
 
     col9, col10, col11, col12 = st.columns(4)
-    col9.metric(
-        "Max Drawdown",
-        f"{max_dd:.2f}%" if max_dd is not None else "N/A",
-    )
-    col10.metric(
-        "Sharpe Ratio",
-        f"{sharpe:.2f}" if sharpe is not None else "N/A",
-    )
-    if not nav_df.empty:
-        peak_nav = nav_df["nav"].max()
-        col11.metric("Peak NAV", compact_gbp(peak_nav))
-    else:
-        col11.metric("Peak NAV", "N/A")
-    col12.metric("Active Holdings", num_active)
+    with col9:
+        st.metric("Max Drawdown", f"{max_dd:.2f}%" if max_dd is not None else "N/A")
+        st.caption("Largest peak-to-trough decline")
+    with col10:
+        st.metric("Sharpe Ratio", f"{sharpe:.2f}" if sharpe is not None else "N/A")
+        st.caption("Risk-adjusted return (higher is better)")
+    with col11:
+        if not nav_df.empty:
+            st.metric("Peak NAV", compact_gbp(nav_df["nav"].max()))
+        else:
+            st.metric("Peak NAV", "N/A")
+        st.caption("Highest portfolio value reached")
+    with col12:
+        st.metric("Active Holdings", num_active)
+        st.caption("Stocks currently held")
 else:
     st.info("No transactions yet. Go to **Transactions** to add your first trade.")

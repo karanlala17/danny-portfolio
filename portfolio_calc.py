@@ -49,7 +49,7 @@ MATCHED_TRANSACTIONS: dict[int, int] = {
 # ---------------------------------------------------------------------------
 
 @st.cache_data(ttl=900, show_spinner=False)
-def compute_holdings() -> list[dict]:
+def compute_holdings(_cache_version: int = 2) -> list[dict]:
     """Compute current holdings from all transactions (FIFO, per ticker+broker)."""
     txns = get_transactions()
     if not txns:

@@ -74,7 +74,8 @@ if holdings:
     # Compute daily change: live NAV (holdings + cash) vs last historical NAV
     # NAV series uses historical EOD prices which don't include today's live moves,
     # so we compare live market value + cash against the most recent NAV series entry.
-    nav_df = compute_nav_series()
+    with st.spinner("Computing NAV series..."):
+        nav_df = compute_nav_series()
     today_nav = total_mv + cash  # live holdings value + current cash
     daily_change_gbp = 0.0
     daily_change_pct = 0.0

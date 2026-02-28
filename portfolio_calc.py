@@ -6,6 +6,7 @@ from collections import defaultdict
 from datetime import date, datetime
 
 import pandas as pd
+import streamlit as st
 from pyxirr import xirr
 
 from db import get_transactions
@@ -38,6 +39,7 @@ def _txn_sort_key(txn: dict):
 # Holdings aggregation
 # ---------------------------------------------------------------------------
 
+@st.cache_data(ttl=900, show_spinner=False)
 def compute_holdings() -> list[dict]:
     """Compute current holdings from all transactions (FIFO, per ticker+broker)."""
     txns = get_transactions()
@@ -358,6 +360,7 @@ def compute_portfolio_xirr() -> float | None:
 # NAV Time Series  (cash-aware, investment tracking)
 # ---------------------------------------------------------------------------
 
+@st.cache_data(ttl=900, show_spinner=False)
 def compute_nav_series() -> pd.DataFrame:
     """Compute daily NAV components from first transaction date to today."""
     txns = get_transactions()

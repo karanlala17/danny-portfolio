@@ -23,7 +23,10 @@ def get_current_price(ticker: str) -> dict | None:
     """
     try:
         t = yf.Ticker(ticker)
-        info = t.info or {}
+        try:
+            info = t.info or {}
+        except Exception:
+            info = {}
 
         price = info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose")
         if price is None:

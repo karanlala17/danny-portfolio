@@ -48,10 +48,8 @@ def get_current_price(ticker: str) -> dict | None:
         change_7d = _pct_change_over(hist_1y, 5)
 
         # Convert pence (GBp) to pounds (GBP) for LSE stocks
-        # All .L tickers on yfinance are quoted in pence regardless of
-        # what the currency field reports (sometimes "GBp", sometimes "GBP")
         reported_currency = info.get("currency", "")
-        if ticker.endswith(".L") or reported_currency == "GBp":
+        if reported_currency == "GBp" or ticker in _KNOWN_PENCE_TICKERS:
             _GBP_PENCE_TICKERS.add(ticker)
             price = price / 100.0
             if prev_close:
@@ -93,8 +91,11 @@ def get_multiple_prices(tickers: tuple) -> dict:
     return results
 
 
-# Tickers whose Yahoo Finance currency is GBp (pence) — needs /100 conversion
-_GBP_PENCE_TICKERS: set[str] = set()
+# LSE stocks quoted in pence (GBp). ETFs like VUSA.L trade in GBP (pounds).
+# yfinance sometimes reports currency as "GBP" even for pence-quoted stocks,
+# so we maintain an explicit set of known pence tickers.
+_KNOWN_PENCE_TICKERS = {"BARC.L", "BT-A.L", "CNA.L", "ANTO.L", "HSBA.L"}
+_GBP_PENCE_TICKERS: set[str] = set(_KNOWN_PENCE_TICKERS)
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -108,13 +109,7 @@ def get_historical_prices(ticker: str, start: str, end: str = None) -> pd.DataFr
         df = hist[["Close"]].copy()
         df.index = df.index.tz_localize(None)
         # Convert pence to pounds for LSE stocks
-        is_gbp_pence = ticker in _GBP_PENCE_TICKERS or ticker.endswith(".L")
-        if not is_gbp_pence:
-            try:
-                is_gbp_pence = (t.info or {}).get("currency") == "GBp"
-            except Exception:
-                pass
-        if is_gbp_pence:
+        if ticker in _GBP_PENCE_TICKERS:
             df["Close"] = df["Close"] / 100.0
             _GBP_PENCE_TICKERS.add(ticker)
         return df

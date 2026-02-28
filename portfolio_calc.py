@@ -36,6 +36,15 @@ def _txn_sort_key(txn: dict):
 
 
 # ---------------------------------------------------------------------------
+# Specific transaction matching overrides (bypass FIFO)
+# Maps sell_transaction_id -> buy_transaction_id
+# ---------------------------------------------------------------------------
+MATCHED_TRANSACTIONS: dict[int, int] = {
+    97: 96,  # NVIDIA: 35-share sell (ID 97) matched against 35-share buy (ID 96)
+}
+
+
+# ---------------------------------------------------------------------------
 # Holdings aggregation
 # ---------------------------------------------------------------------------
 
@@ -83,7 +92,35 @@ def compute_holdings() -> list[dict]:
                 })
                 continue
 
+            sell_id = int(t.get("id", 0))
             sell_qty = qty
+
+            # Check for specific transaction matching override
+            matched_buy_id = MATCHED_TRANSACTIONS.get(sell_id)
+            if matched_buy_id is not None:
+                for i, buy in enumerate(buys):
+                    if buy["id"] == matched_buy_id:
+                        matched = min(sell_qty, buy["qty"])
+
+                        cost_n = matched * buy["price"]
+                        proceeds_n = matched * price
+                        cost_gbp = _to_gbp(cost_n, currency, buy["fx"])
+                        proceeds_gbp = _to_gbp(proceeds_n, currency, fx)
+
+                        realized_cost_native += cost_n
+                        realized_proceeds_native += proceeds_n
+                        realized_pnl_native += (proceeds_n - cost_n)
+                        realized_cost_gbp += cost_gbp
+                        realized_proceeds_gbp += proceeds_gbp
+                        realized_pnl_gbp += (proceeds_gbp - cost_gbp)
+
+                        buy["qty"] -= matched
+                        sell_qty -= matched
+                        if buy["qty"] <= 0:
+                            buys.pop(i)
+                        break
+
+            # Standard FIFO for remaining sell quantity
             while sell_qty > 0 and buys:
                 buy = buys[0]
                 matched = min(sell_qty, buy["qty"])
@@ -211,10 +248,61 @@ def compute_trade_profitability() -> list[dict]:
                     "price": price,
                     "fx": fx,
                     "date": txn_date,
+                    "id": int(t.get("id", 0)),
                 })
                 continue
 
+            sell_id = int(t.get("id", 0))
             sell_qty = qty
+
+            # Check for specific transaction matching override
+            matched_buy_id = MATCHED_TRANSACTIONS.get(sell_id)
+            if matched_buy_id is not None:
+                for i, buy in enumerate(buys):
+                    if buy["id"] == matched_buy_id:
+                        matched = min(sell_qty, buy["qty"])
+                        cost_native = matched * buy["price"]
+                        proceeds_native = matched * price
+                        pnl_native = proceeds_native - cost_native
+                        cost_gbp = _to_gbp(cost_native, currency, buy["fx"])
+                        proceeds_gbp = _to_gbp(proceeds_native, currency, fx)
+                        pnl_gbp = proceeds_gbp - cost_gbp
+                        pnl_pct = (pnl_native / cost_native * 100) if cost_native else None
+
+                        hold_days = max((txn_date - buy["date"]).days, 1)
+                        annualized_pct = None
+                        if cost_native > 0 and proceeds_native > 0:
+                            gross = proceeds_native / cost_native
+                            annualized_pct = (gross ** (365 / hold_days) - 1) * 100
+
+                        rows.append({
+                            "ticker": ticker,
+                            "display_name": display_name,
+                            "broker": broker,
+                            "currency": currency,
+                            "buy_date": buy["date"],
+                            "sell_date": txn_date,
+                            "holding_days": hold_days,
+                            "qty": matched,
+                            "buy_price": buy["price"],
+                            "sell_price": price,
+                            "cost_native": cost_native,
+                            "proceeds_native": proceeds_native,
+                            "realized_pnl_native": pnl_native,
+                            "cost_gbp": cost_gbp,
+                            "proceeds_gbp": proceeds_gbp,
+                            "realized_pnl_gbp": pnl_gbp,
+                            "realized_pnl_pct": pnl_pct,
+                            "annualized_return_pct": annualized_pct,
+                        })
+
+                        buy["qty"] -= matched
+                        sell_qty -= matched
+                        if buy["qty"] <= 0:
+                            buys.pop(i)
+                        break
+
+            # Standard FIFO for remaining sell quantity
             while sell_qty > 0 and buys:
                 buy = buys[0]
                 matched = min(sell_qty, buy["qty"])

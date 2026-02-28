@@ -40,7 +40,7 @@ def _txn_sort_key(txn: dict):
 # Maps sell_transaction_id -> buy_transaction_id
 # ---------------------------------------------------------------------------
 MATCHED_TRANSACTIONS: dict[int, int] = {
-    97: 96,  # NVIDIA: 35-share sell (ID 97) matched against 35-share buy (ID 96)
+    96: 95,  # NVIDIA: 35-share sell (ID 96) matched against 35-share buy (ID 95)
 }
 
 

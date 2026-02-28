@@ -142,3 +142,13 @@ if holdings:
         st.caption("Stocks currently held")
 else:
     st.info("No transactions yet. Go to **Transactions** to add your first trade.")
+
+# --- Debug: NVDA transaction IDs ---
+with st.expander("Debug: NVDA JB Transaction IDs"):
+    from db import get_transactions as _get_txns
+    _all = _get_txns(ticker="NVDA")
+    if _all:
+        _debug_rows = [{"id": t["id"], "action": t["action"], "date": t["date"],
+                        "qty": t["quantity"], "price": t["price_per_share"],
+                        "broker": t["broker"]} for t in _all]
+        st.dataframe(pd.DataFrame(_debug_rows), hide_index=True)

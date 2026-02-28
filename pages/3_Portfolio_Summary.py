@@ -241,12 +241,23 @@ for broker in brokers:
             sub_mv = active["market_value_gbp"].sum()
             sub_ur = active["unrealized_pnl_gbp"].sum()
             sub_re = active["realized_pnl_gbp"].sum()
-            st.markdown(
-                f"**Active {currency} Subtotal** — "
-                f"Market Value: £{sub_mv:,.2f} | "
-                f"Unrealized: £{sub_ur:,.2f} | "
-                f"Realized: £{sub_re:,.2f}"
-            )
+            if currency != "GBP":
+                sub_mv_native = active["market_value"].sum()
+                sub_ur_native = active["unrealized_pnl"].sum()
+                sub_re_native = active["realized_pnl_native"].sum()
+                st.markdown(
+                    f"**Active {currency} Subtotal** — "
+                    f"Market Value: {ccy_sym}{sub_mv_native:,.2f} (£{sub_mv:,.2f}) | "
+                    f"Unrealized: {ccy_sym}{sub_ur_native:,.2f} (£{sub_ur:,.2f}) | "
+                    f"Realized: {ccy_sym}{sub_re_native:,.2f} (£{sub_re:,.2f})"
+                )
+            else:
+                st.markdown(
+                    f"**Active {currency} Subtotal** — "
+                    f"Market Value: £{sub_mv:,.2f} | "
+                    f"Unrealized: £{sub_ur:,.2f} | "
+                    f"Realized: £{sub_re:,.2f}"
+                )
 
     # Broker total
     b_mv = broker_df["market_value_gbp"].sum()

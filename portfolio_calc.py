@@ -396,7 +396,9 @@ def compute_nav_series() -> pd.DataFrame:
     date_range = pd.bdate_range(start=first_date, end=date.today())
 
     records = []
-    holdings = defaultdict(float)
+    holdings = defaultdict(float)       # ticker -> qty
+    cost_basis = defaultdict(float)     # ticker -> total cost in native currency
+    cost_basis_fx = defaultdict(float)  # ticker -> weighted avg FX at purchase
     cash_on_hand = 0.0
     total_investment = 0.0
     txn_idx = 0
@@ -411,21 +413,34 @@ def compute_nav_series() -> pd.DataFrame:
                 break
 
             fx = float(t["exchange_rate_to_gbp"] or 1.0)
-            amount_gbp = _to_gbp(
-                float(t["quantity"]) * float(t["price_per_share"]),
-                t["currency"],
-                fx,
-            )
+            qty = float(t["quantity"])
+            price = float(t["price_per_share"])
+            amount_gbp = _to_gbp(qty * price, t["currency"], fx)
 
             if t["action"] == "BUY":
-                holdings[t["ticker"]] += float(t["quantity"])
+                # Track cost basis for fallback pricing
+                old_qty = holdings[t["ticker"]]
+                old_cost = cost_basis[t["ticker"]]
+                holdings[t["ticker"]] += qty
+                cost_basis[t["ticker"]] += qty * price
+                new_qty = holdings[t["ticker"]]
+                if new_qty > 0:
+                    cost_basis_fx[t["ticker"]] = (
+                        (old_qty * cost_basis_fx.get(t["ticker"], fx) + qty * fx)
+                        / new_qty
+                    )
+
                 if cash_on_hand >= amount_gbp:
                     cash_on_hand -= amount_gbp
                 else:
                     total_investment += (amount_gbp - cash_on_hand)
                     cash_on_hand = 0.0
             else:
-                holdings[t["ticker"]] -= float(t["quantity"])
+                if holdings[t["ticker"]] > 0:
+                    # Reduce cost basis proportionally
+                    sell_frac = min(qty / holdings[t["ticker"]], 1.0)
+                    cost_basis[t["ticker"]] *= (1 - sell_frac)
+                holdings[t["ticker"]] -= qty
                 cash_on_hand += amount_gbp
 
             txn_idx += 1
@@ -437,13 +452,20 @@ def compute_nav_series() -> pd.DataFrame:
             if qty <= 0:
                 continue
             price = _get_price_on_date(price_history.get(ticker), d)
-            if price is None:
-                continue
-            holdings_value += _to_gbp(
-                qty * price,
-                ticker_currencies.get(ticker, "USD"),
-                gbp_usd_rate,
-            )
+            if price is not None:
+                holdings_value += _to_gbp(
+                    qty * price,
+                    ticker_currencies.get(ticker, "USD"),
+                    gbp_usd_rate,
+                )
+            else:
+                # Fallback: use cost basis when no market price available
+                fallback_fx = cost_basis_fx.get(ticker, gbp_usd_rate)
+                holdings_value += _to_gbp(
+                    cost_basis.get(ticker, 0.0),
+                    ticker_currencies.get(ticker, "USD"),
+                    fallback_fx,
+                )
 
         nav = holdings_value + cash_on_hand
         profit = nav - total_investment

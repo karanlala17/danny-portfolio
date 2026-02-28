@@ -79,8 +79,9 @@ if holdings:
     today_nav = total_mv + cash  # live holdings value + current cash
     daily_change_gbp = 0.0
     daily_change_pct = 0.0
-    if not nav_df.empty:
-        prev_nav = nav_df.iloc[-1]["nav"]  # last EOD NAV from historical prices
+    if len(nav_df) >= 2:
+        # Compare live NAV against the previous business day's historical NAV
+        prev_nav = nav_df.iloc[-2]["nav"]
         daily_change_gbp = today_nav - prev_nav
         daily_change_pct = (daily_change_gbp / prev_nav * 100) if prev_nav > 0 else 0.0
 

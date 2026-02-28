@@ -49,6 +49,9 @@ def get_current_price(ticker: str) -> dict | None:
 
         # Convert pence (GBp) to pounds (GBP) for LSE stocks
         reported_currency = info.get("currency", "")
+        # If info was unavailable but ticker is LSE (.L), assume pence
+        if not reported_currency and ticker.endswith(".L"):
+            reported_currency = "GBp"
         if reported_currency == "GBp":
             _GBP_PENCE_TICKERS.add(ticker)
             price = price / 100.0
@@ -106,7 +109,13 @@ def get_historical_prices(ticker: str, start: str, end: str = None) -> pd.DataFr
         df = hist[["Close"]].copy()
         df.index = df.index.tz_localize(None)
         # Convert pence to pounds for LSE stocks
-        if ticker in _GBP_PENCE_TICKERS or (t.info or {}).get("currency") == "GBp":
+        is_gbp_pence = ticker in _GBP_PENCE_TICKERS or ticker.endswith(".L")
+        if not is_gbp_pence:
+            try:
+                is_gbp_pence = (t.info or {}).get("currency") == "GBp"
+            except Exception:
+                pass
+        if is_gbp_pence:
             df["Close"] = df["Close"] / 100.0
             _GBP_PENCE_TICKERS.add(ticker)
         return df

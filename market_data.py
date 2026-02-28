@@ -48,11 +48,10 @@ def get_current_price(ticker: str) -> dict | None:
         change_7d = _pct_change_over(hist_1y, 5)
 
         # Convert pence (GBp) to pounds (GBP) for LSE stocks
+        # All .L tickers on yfinance are quoted in pence regardless of
+        # what the currency field reports (sometimes "GBp", sometimes "GBP")
         reported_currency = info.get("currency", "")
-        # If info was unavailable but ticker is LSE (.L), assume pence
-        if not reported_currency and ticker.endswith(".L"):
-            reported_currency = "GBp"
-        if reported_currency == "GBp":
+        if ticker.endswith(".L") or reported_currency == "GBp":
             _GBP_PENCE_TICKERS.add(ticker)
             price = price / 100.0
             if prev_close:

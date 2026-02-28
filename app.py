@@ -22,7 +22,7 @@ if not is_seeded():
 # ---------------------------------------------------------------------------
 
 st.title("Danny Jatania's Portfolio Dashboard")
-st.caption("Prepared by Karan Lala")
+st.caption("Prepared by Karan Lala · v2.1")
 st.markdown("---")
 
 st.markdown("""

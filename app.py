@@ -22,18 +22,7 @@ if not is_seeded():
 # ---------------------------------------------------------------------------
 
 st.title("Danny Jatania's Portfolio Dashboard")
-st.caption("Prepared by Karan Lala · v2.2")
-
-# Temporary debug for pence conversion
-from market_data import get_current_price, _KNOWN_PENCE_TICKERS
-with st.expander("Debug: BARC.L price check"):
-    _dbg = get_current_price("BARC.L")
-    if _dbg:
-        st.write(f"Price returned: {_dbg['price']}")
-        st.write(f"Currency: {_dbg['currency']}")
-        st.write(f"Known pence tickers: {_KNOWN_PENCE_TICKERS}")
-    else:
-        st.write("get_current_price returned None")
+st.caption("Prepared by Karan Lala")
 st.markdown("---")
 
 st.markdown("""

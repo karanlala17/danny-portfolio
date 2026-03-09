@@ -204,6 +204,14 @@ def get_transactions(ticker=None):
         ).fetchall()
 
 
+def _clear_portfolio_cache():
+    """Clear cached portfolio calculations after transaction changes."""
+    try:
+        st.cache_data.clear()
+    except Exception:
+        pass
+
+
 def add_transaction(ticker, display_name, action, txn_date, quantity,
                     price_per_share, currency, broker, exchange_rate_to_gbp, notes=""):
     with get_connection() as conn:
@@ -217,6 +225,7 @@ def add_transaction(ticker, display_name, action, txn_date, quantity,
         )
     # Auto-add to watchlist
     add_to_watchlist(ticker, display_name, currency)
+    _clear_portfolio_cache()
 
 
 def update_transaction(txn_id, **kwargs):
@@ -228,11 +237,13 @@ def update_transaction(txn_id, **kwargs):
         conn.execute(
             f"UPDATE transactions SET {set_clause} WHERE id = ?", values
         )
+    _clear_portfolio_cache()
 
 
 def delete_transaction(txn_id):
     with get_connection() as conn:
         conn.execute("DELETE FROM transactions WHERE id = ?", (txn_id,))
+    _clear_portfolio_cache()
 
 
 # ---------------------------------------------------------------------------

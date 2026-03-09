@@ -8,6 +8,15 @@ from db import init_db, is_seeded
 from seed_data import seed_all
 
 # ---------------------------------------------------------------------------
+# Sidebar — Refresh button
+# ---------------------------------------------------------------------------
+
+with st.sidebar:
+    if st.button("Refresh Data"):
+        st.cache_data.clear()
+        st.rerun()
+
+# ---------------------------------------------------------------------------
 # Auto-init and seed on first run
 # ---------------------------------------------------------------------------
 

@@ -7,6 +7,9 @@ import pandas as pd
 from datetime import date, datetime
 from decimal import Decimal
 
+from sidebar import render_sidebar
+render_sidebar()
+
 from db import (
     get_transactions,
     add_transaction,

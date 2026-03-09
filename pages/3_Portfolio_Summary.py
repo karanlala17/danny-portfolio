@@ -5,6 +5,9 @@ st.set_page_config(page_title="Portfolio Summary", page_icon="💼", layout="wid
 
 import pandas as pd
 
+from sidebar import render_sidebar
+render_sidebar()
+
 from config import WATCHLIST_ORDER
 from portfolio_calc import compute_holdings, compute_portfolio_xirr
 from market_data import get_fx_rate

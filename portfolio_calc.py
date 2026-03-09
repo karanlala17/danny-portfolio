@@ -48,8 +48,8 @@ MATCHED_TRANSACTIONS: dict[int, int] = {
 # Holdings aggregation
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=900, show_spinner=False)
-def compute_holdings(_cache_version: int = 2) -> list[dict]:
+@st.cache_data(ttl=120, show_spinner=False)
+def compute_holdings() -> list[dict]:
     """Compute current holdings from all transactions (FIFO, per ticker+broker)."""
     txns = get_transactions()
     if not txns:
@@ -448,7 +448,7 @@ def compute_portfolio_xirr() -> float | None:
 # NAV Time Series  (cash-aware, investment tracking)
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=120, show_spinner=False)
 def compute_nav_series() -> pd.DataFrame:
     """Compute daily NAV components from first transaction date to today."""
     txns = get_transactions()

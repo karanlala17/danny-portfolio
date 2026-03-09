@@ -5,6 +5,9 @@ st.set_page_config(page_title="NAV Chart", page_icon="📈", layout="wide")
 
 import plotly.graph_objects as go
 
+from sidebar import render_sidebar
+render_sidebar()
+
 from portfolio_calc import compute_nav_series
 
 st.title("Portfolio NAV Over Time")

@@ -6,15 +6,9 @@ st.set_page_config(page_title="Portfolio Dashboard", page_icon="📊", layout="w
 
 from db import init_db, is_seeded
 from seed_data import seed_all
+from sidebar import render_sidebar
 
-# ---------------------------------------------------------------------------
-# Sidebar — Refresh button
-# ---------------------------------------------------------------------------
-
-with st.sidebar:
-    if st.button("Refresh Data"):
-        st.cache_data.clear()
-        st.rerun()
+render_sidebar()
 
 # ---------------------------------------------------------------------------
 # Auto-init and seed on first run

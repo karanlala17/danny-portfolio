@@ -5,6 +5,9 @@ st.set_page_config(page_title="Trade Profitability", page_icon="📌", layout="w
 
 import pandas as pd
 
+from sidebar import render_sidebar
+render_sidebar()
+
 from portfolio_calc import compute_trade_profitability
 
 st.title("Per-Trade Profitability")

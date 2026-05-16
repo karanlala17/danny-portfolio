@@ -17,7 +17,7 @@ from db import (
     get_watchlist,
     update_transaction,
 )
-from market_data import get_fx_rate_on_date
+from market_data import get_fx_rate_on_date, search_tickers, get_ticker_currency
 from ui_access import is_admin_user
 
 st.title("Transactions")
@@ -43,27 +43,81 @@ ticker_options = {w["ticker"]: f"{w['ticker']} — {w['display_name']}" for w in
 
 if admin_mode:
     st.subheader("Add Transaction")
+
+    # ── Ticker selection (outside form so search is reactive) ──────────────
+    _use_wl = st.checkbox("Pick from watchlist", value=True, key="add_txn_use_wl")
+
+    _ticker = ""
+    _name = ""
+    _ccy_hint = "GBP"
+
+    if _use_wl and ticker_options:
+        _sel = st.selectbox(
+            "Ticker",
+            options=list(ticker_options.keys()),
+            format_func=lambda t: ticker_options[t],
+            key="add_txn_wl_sel",
+        )
+        _ticker = _sel
+        _name = next((w["display_name"] for w in watchlist if w["ticker"] == _sel), _sel)
+        _ccy_hint = next((w["currency"] for w in watchlist if w["ticker"] == _sel), "GBP")
+    else:
+        _search_q = st.text_input(
+            "Search Yahoo Finance",
+            placeholder="Type ticker or company name (e.g. AAPL, Barclays)…",
+            key="add_txn_search_q",
+        )
+        if _search_q.strip():
+            with st.spinner("Searching…"):
+                _results = search_tickers(_search_q)
+            if _results:
+                _opt_labels = [
+                    f"{r['symbol']} — {r['name']} ({r['exchange']})" for r in _results
+                ]
+                _opt_map = dict(zip(_opt_labels, _results))
+                _chosen_label = st.selectbox(
+                    "Select ticker", _opt_labels, key="add_txn_search_sel"
+                )
+                _chosen = _opt_map[_chosen_label]
+                _ticker = _chosen["symbol"]
+
+                _name = st.text_input(
+                    "Display Name",
+                    value=_chosen["name"],
+                    key="add_txn_name_edit",
+                )
+
+                with st.spinner("Detecting currency…"):
+                    _detected = get_ticker_currency(_ticker)
+                _ccy_hint = _detected if _detected in ("GBP", "USD") else "GBP"
+                st.caption(f"Ticker: **{_ticker}** | Currency detected: **{_ccy_hint}**")
+            else:
+                st.info("No results found — try a different search term.")
+                _ticker = st.text_input("Ticker (manual)", placeholder="e.g. AAPL", key="add_txn_manual_ticker")
+                _name = st.text_input("Display Name", placeholder="e.g. Apple Inc", key="add_txn_manual_name")
+        else:
+            _ticker = st.text_input("Ticker (manual)", placeholder="e.g. AAPL", key="add_txn_manual_ticker")
+            _name = st.text_input("Display Name", placeholder="e.g. Apple Inc", key="add_txn_manual_name")
+
+    # ── Rest of transaction details (inside form) ──────────────────────────
     with st.form("add_txn", clear_on_submit=True):
+        if _ticker:
+            st.info(f"**{_ticker}** — {_name}")
+        else:
+            st.warning("Search and select a ticker above first.")
+
         col1, col2 = st.columns(2)
 
         with col1:
-            use_watchlist = st.checkbox("Pick from watchlist", value=True)
-            if use_watchlist and ticker_options:
-                selected = st.selectbox("Ticker", options=list(ticker_options.keys()),
-                                        format_func=lambda t: ticker_options[t])
-                ticker = selected
-                display_name = next((w["display_name"] for w in watchlist if w["ticker"] == selected), selected)
-            else:
-                ticker = st.text_input("Yahoo Finance Ticker", placeholder="e.g. AAPL")
-                display_name = st.text_input("Display Name", placeholder="e.g. Apple Inc")
-
             action = st.selectbox("Action", ["BUY", "SELL"])
             txn_date = st.date_input("Date", value=date.today(), format="DD/MM/YYYY")
 
         with col2:
             quantity = st.number_input("Quantity", min_value=0.0, step=1.0)
             price = st.number_input("Price per Share", min_value=0.0, step=0.0001, format="%.4f")
-            currency = st.selectbox("Currency", ["GBP", "USD"])
+            _ccy_options = ["GBP", "USD"]
+            _ccy_default_idx = _ccy_options.index(_ccy_hint) if _ccy_hint in _ccy_options else 0
+            currency = st.selectbox("Currency", _ccy_options, index=_ccy_default_idx)
             broker = st.selectbox("Broker", ["JB", "DBS"])
 
             if currency == "USD":
@@ -83,12 +137,12 @@ if admin_mode:
         submitted = st.form_submit_button("Add Transaction")
 
         if submitted:
-            if not ticker or not display_name or quantity <= 0 or price < 0:
+            if not _ticker or not _name or quantity <= 0 or price < 0:
                 st.error("Please fill in all required fields (ticker, name, quantity, price).")
             else:
                 add_transaction(
-                    ticker=ticker.strip().upper(),
-                    display_name=display_name.strip(),
+                    ticker=_ticker.strip().upper(),
+                    display_name=_name.strip(),
                     action=action,
                     txn_date=txn_date.strftime("%Y-%m-%d"),
                     quantity=quantity,
@@ -98,7 +152,7 @@ if admin_mode:
                     exchange_rate_to_gbp=fx_rate,
                     notes=notes,
                 )
-                st.success(f"Added {action} of {quantity:.0f} {ticker} @ {price:.4f} {currency}")
+                st.success(f"Added {action} of {quantity:.0f} {_ticker} @ {price:.4f} {currency}")
                 st.rerun()
 
 # ---------------------------------------------------------------------------

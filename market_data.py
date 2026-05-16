@@ -172,6 +172,49 @@ def get_fx_rate_on_date(pair_ticker: str, fx_date: str) -> float | None:
     return rate
 
 
+@st.cache_data(ttl=60, show_spinner=False)
+def search_tickers(query: str, max_results: int = 10) -> list[dict]:
+    """Search Yahoo Finance for tickers matching a query string.
+
+    Returns a list of dicts with keys: symbol, name, exchange, type.
+    """
+    if not query or not query.strip():
+        return []
+    try:
+        results = yf.Search(query.strip(), max_results=max_results)
+        quotes = results.quotes or []
+        out = []
+        for q in quotes:
+            symbol = q.get("symbol", "")
+            name = q.get("shortname") or q.get("longname") or symbol
+            exchange = q.get("exchDisp", "")
+            type_disp = q.get("typeDisp", "")
+            if symbol:
+                out.append({
+                    "symbol": symbol,
+                    "name": name,
+                    "exchange": exchange,
+                    "type": type_disp,
+                })
+        return out
+    except Exception:
+        return []
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_ticker_currency(ticker: str) -> str:
+    """Return the currency for a ticker using fast_info (lightweight call).
+
+    Returns 'GBP' for GBp-quoted LSE stocks. Returns '' on failure.
+    """
+    try:
+        t = yf.Ticker(ticker)
+        ccy = t.fast_info.get("currency") or ""
+        return "GBP" if ccy == "GBp" else ccy
+    except Exception:
+        return ""
+
+
 @st.cache_data(ttl=900, show_spinner=False)
 def get_ticker_news(ticker: str, limit: int = 5) -> list[dict]:
     """Get recent news items for a ticker using yfinance."""

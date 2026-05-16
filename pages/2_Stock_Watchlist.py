@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 from config import WATCHLIST_ORDER
 from db import get_watchlist, add_to_watchlist, remove_from_watchlist, get_transactions
-from market_data import get_current_price, get_historical_prices
+from market_data import get_current_price, get_historical_prices, search_tickers, get_ticker_currency
 from ui_access import is_admin_user
 
 st.title("Stock Watchlist")
@@ -22,21 +22,49 @@ admin_mode = is_admin_user("watchlist")
 
 if admin_mode:
     with st.expander("Manage Watchlist"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            new_ticker = st.text_input("Yahoo Finance Ticker", placeholder="e.g. AAPL")
-        with col2:
-            new_name = st.text_input("Display Name", placeholder="e.g. Apple Inc")
-        with col3:
-            new_currency = st.selectbox("Currency", ["GBP", "USD"], index=1)
+        search_q = st.text_input(
+            "Search Yahoo Finance",
+            placeholder="Type ticker or company name (e.g. AAPL, Barclays)…",
+            key="wl_search_q",
+        )
 
-        if st.button("Add to Watchlist"):
-            if new_ticker and new_name:
+        new_ticker, new_name, new_currency = "", "", "GBP"
+
+        if search_q.strip():
+            with st.spinner("Searching…"):
+                results = search_tickers(search_q)
+            if results:
+                opt_labels = [
+                    f"{r['symbol']} — {r['name']} ({r['exchange']})" for r in results
+                ]
+                opt_map = dict(zip(opt_labels, results))
+                chosen_label = st.selectbox("Select ticker", opt_labels, key="wl_search_select")
+                chosen = opt_map[chosen_label]
+                new_ticker = chosen["symbol"]
+
+                new_name = st.text_input(
+                    "Display Name",
+                    value=chosen["name"],
+                    key="wl_name_input",
+                )
+
+                with st.spinner("Detecting currency…"):
+                    detected_ccy = get_ticker_currency(new_ticker)
+                ccy_options = ["GBP", "USD"]
+                ccy_idx = ccy_options.index(detected_ccy) if detected_ccy in ccy_options else 1
+                new_currency = st.selectbox(
+                    "Currency", ccy_options, index=ccy_idx, key="wl_currency_select"
+                )
+            else:
+                st.info("No results found — try a different search term.")
+
+        if new_ticker and new_name:
+            if st.button("Add to Watchlist"):
                 add_to_watchlist(new_ticker.strip().upper(), new_name.strip(), new_currency)
                 st.success(f"Added {new_ticker} to watchlist.")
                 st.rerun()
-            else:
-                st.error("Please provide both ticker and display name.")
+        else:
+            st.caption("Search above to find a ticker, then click Add.")
 
         watchlist = get_watchlist()
         if watchlist:

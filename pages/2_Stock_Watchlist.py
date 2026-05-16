@@ -8,11 +8,7 @@ from datetime import datetime, timedelta
 
 from config import WATCHLIST_ORDER
 from db import get_watchlist, add_to_watchlist, remove_from_watchlist, get_transactions
-try:
-    from market_data import get_current_price, get_historical_prices, search_tickers, get_ticker_currency
-except Exception as _import_err:
-    st.error(f"market_data import failed: {_import_err}")
-    st.stop()
+from market_data import get_current_price, get_historical_prices, search_tickers, get_ticker_currency
 from ui_access import is_admin_user
 
 st.title("Stock Watchlist")

@@ -59,7 +59,9 @@ class _ConnWrapper:
         self._is_turso = is_turso
 
     def execute(self, sql, params=None):
-        if params:
+        if params is not None and params != [] and params != ():
+            if isinstance(params, list):
+                params = tuple(params)
             cur = self._conn.execute(sql, params)
         else:
             cur = self._conn.execute(sql)
